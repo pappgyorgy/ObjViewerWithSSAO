@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QR code embedding</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+
+    <script type="module">
+
+        import * as THREE from './js/node_modules/three/build/three.module.js';
+
+        import Stats from './js/node_modules/three/examples/jsm/libs/stats.module.js';
+        import { GUI } from './js/node_modules/three/examples/jsm/libs/dat.gui.module.js';
+
+        import { EffectComposer } from './js/node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
+        import { SSAOPass } from './js/node_modules/three/examples/jsm/postprocessing/SSAOPass.js';
+        import { OrbitControls } from './js/node_modules/three/examples/jsm/controls/OrbitControls.js';
+
+        import { OBJLoader } from './js/node_modules/three/examples/jsm/loaders/OBJLoader.js';
+
+        var container, stats;
+        var camera, scene, renderer;
+        var composer;
+        var color, material;
+        var object;
+        var controls;
+
+        var windowWidth, windowHeight;
+
+        var modelInfo = {
+            modelID: 0,
+            modePath: [
+                "models/bunny.obj",
+                "models/bumpy_sphere.obj"
+            ]
+        }
+
+        init();
+        animate();
+
+        function init() {
+
+            windowWidth = window.innerWidth;
+            windowHeight = window.innerHeight;
+
+            container = document.createElement( 'div' );
+            document.body.appendChild( container );
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize( windowWidth, windowHeight );
+            document.body.appendChild( renderer.domElement );
+
+            if ( ! renderer.extensions.get( 'WEBGL_depth_texture' ) ) {
+
+                document.querySelector( '#error' ).style.display = 'block';
+                return;
+
+            }
+
+            camera = new THREE.PerspectiveCamera( 65, windowWidth / windowHeight, 100, 700 );
+            camera.position.z = 500;
+
+            controls = new OrbitControls (camera, renderer.domElement);
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color( 0xaaaaaa );
+
+            scene.add( new THREE.DirectionalLight() );
+            scene.add( new THREE.HemisphereLight() );
+
+            color = new THREE.Color();
+            color.setHSL(Math.random(), .85, .6);
+
+            material = new THREE.MeshLambertMaterial( {
+                color: color.getHex()
+            } );
+
+
+            var manager = new THREE.LoadingManager( loadModel );
+
+            manager.onProgress = managerOnProgress;
+
+            var loader = new OBJLoader( manager );
+
+            loader.load( modelInfo.modePath[modelInfo.modelID], function ( obj ) {
+
+                object = obj;
+
+            }, onProgress, onError );
+
+            //stats = new Stats();
+            //container.appendChild( stats.dom );
+
+            var width = windowWidth;
+            var height = windowHeight;
+
+            composer = new EffectComposer( renderer );
+
+            var ssaoPass = new SSAOPass( scene, camera, width, height );
+            ssaoPass.kernelRadius = 10;
+            ssaoPass.minDistance = 0.001;
+            ssaoPass.maxDistance = 0.075;
+            composer.addPass( ssaoPass );
+
+            // Init gui
+            var gui = new GUI();
+
+            gui.add( modelInfo, 'modelID', {
+                "Bunny": 0,
+                "Bumpy sphere": 1
+            } ).onChange( function ( value ) {
+
+                scene.remove(object);
+
+                loader.load( modelInfo.modePath[modelInfo.modelID], function ( obj ) {
+
+                    object = obj;
+
+                }, onProgress, onError );
+
+            } );
+
+            window.addEventListener( 'resize', onWindowResize, false );
+
+        }
+
+        function onWindowResize() {
+
+            var width = window.innerWidth;
+            var height = window.innerHeight;
+
+            windowWidth = window.outerWidth;
+            windowHeight = window.outerHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize( width, height );
+            composer.setSize( width, height );
+
+        }
+
+        function animate() {
+
+            requestAnimationFrame( animate );
+
+            //stats.begin();
+            render();
+            //stats.end();
+
+        }
+
+        function render() {
+
+            var timer = performance.now();
+            controls.update();
+            composer.render();
+
+        }
+
+        function loadModel() {
+
+            object.traverse( function ( child ) {
+
+                if ( child.isMesh ) {
+                    child.material = material;
+                }
+
+            } );
+
+            //object.position.y = - 95;
+            object.scale.setScalar(50.0);
+            scene.add( object );
+
+        }
+
+
+        function onProgress( xhr ) {
+
+            if ( xhr.lengthComputable ) {
+
+                var percentComplete = xhr.loaded / xhr.total * 100;
+                console.log( 'model ' + Math.round( percentComplete, 2 ) + '% downloaded' );
+
+            }
+
+        }
+
+        function managerOnProgress ( item, loaded, total ) {
+            console.log( item, loaded, total );
+        }
+
+        function onError() {}
+
+
+    </script>
+
+
+    </body>
+</html>
