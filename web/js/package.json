@@ -3,6 +3,6 @@
   "version": "0.0.1",
   "description": "JavaScript dependecies for the project",
   "dependencies": {
-    "three": "^0.116.1"
+    "three": "^0.126.0"
   }
 }
